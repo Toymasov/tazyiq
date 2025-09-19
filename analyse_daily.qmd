@@ -1,0 +1,246 @@
+---
+title: "Oilada tazyiq va zo'ravonlik"
+format: 
+  html:
+    toc: true
+    toc-location: left
+    code-fold: true
+    self-contained: true
+editor: visual
+---
+
+## Quarto
+
+Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+
+## Running Code
+
+When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+
+```{r}
+
+#install.packages("lubridate")
+#install.packages("leaflat")
+#install.packages("gt")
+
+library(httr)
+library(jsonlite)
+library(dplyr)
+library(ggplot2)
+library(DT)
+library(lubridate)
+library(leaflet)
+library(tidyr)
+library(gt)
+
+
+# --- Shaxsiy ma'lumotlaringizni kiriting ---
+kobo_server_url <- "https://kf.kobotoolbox.org"
+form_uid <- "aPHk7GW8ytrjCaEwzBsW4P" 
+api_token <- "990893adfcc76433426f407adf5610b70d55ed0d"
+# -------------------------------------------
+
+# API uchun to'liq URL manzilini yaratish
+api_asset_url <- paste0(kobo_server_url, "/api/v2/assets/", form_uid, ".json")
+api_data_url <- paste0(kobo_server_url, "/api/v2/assets/", form_uid, "/data.json")
+
+# Avval formaning o'zi haqida ma'lumot olamiz (jami yozuvlar sonini bilish uchun)
+asset_response <- GET(url = api_asset_url, add_headers(Authorization = paste("Token", api_token)))
+total_submissions_on_server <- fromJSON(content(asset_response, "text"))$deployment__submission_count
+
+# Endi asosiy ma'lumotlarni yuklaymiz
+data_response <- GET(url = api_data_url, add_headers(Authorization = paste("Token", api_token)))
+
+
+if (status_code(data_response) == 200) {
+  raw_data <- fromJSON(content(data_response, "text", encoding = "UTF-8"))
+  kobo_data <- raw_data$results
+  downloaded_rows <- nrow(kobo_data)
+  
+  cat(sprintf("Serverdagi jami yozuvlar soni: %d\n", total_submissions_on_server))
+  cat(sprintf("Yuklab olingan yozuvlar soni: %d\n", downloaded_rows))
+  
+  if (total_submissions_on_server == downloaded_rows) {
+    cat("✅ Tasdiqlandi: Barcha ma'lumotlar to'liq va xatosiz yuklandi.\n")
+  } else {
+    cat("⚠️ Diqqat: Ma'lumotlar sonida nomuvofiqlik bor! Server bilan qayta tekshiring.\n")
+  }
+  
+} else {
+  cat(sprintf("❌ Xatolik: Serverdan ma'lumotlarni yuklab bo'lmadi. Status kodi: %d\n", status_code(data_response)))
+  kobo_data <- data.frame() 
+}
+
+clean_kobo<- kobo_data %>%
+  mutate(
+    `all/group_pl57r45/A1` = case_when(
+      `all/group_pl57r45/A1` == 1703 ~ "Andijon",
+      `all/group_pl57r45/A1` == 1706 ~ "Buxoro",
+      `all/group_pl57r45/A1` == 1708 ~ "Jizzax",
+      `all/group_pl57r45/A1` == 1710 ~ "Qashqadaryo",
+      `all/group_pl57r45/A1` == 1712 ~ "Navoiy",
+      `all/group_pl57r45/A1` == 1714 ~ "Namangan",
+      `all/group_pl57r45/A1` == 1718 ~ "Samarqand",
+      `all/group_pl57r45/A1` == 1724 ~ "Sirdaryo",
+      `all/group_pl57r45/A1` == 1722 ~ "Surxondaryo",
+      `all/group_pl57r45/A1` == 1726 ~ "Toshkent sh.",
+      `all/group_pl57r45/A1` == 1727 ~ "Toshkent",
+      `all/group_pl57r45/A1` == 1730 ~ "Farg'ona",
+      `all/group_pl57r45/A1` == 1733 ~ "Xorazm",
+      `all/group_pl57r45/A1` == 1735 ~ "Qoraqalpog'iston",
+      .default = as.character(`all/group_pl57r45/A1`)
+    ),
+      N1 = case_when(
+        N1 == 1 ~ "Ha",
+        N1 == 2 ~ "Yo'q",
+    )
+  )  
+daily_submissions <- clean_kobo %>%
+  mutate(topshirilgan_sana = as.Date(`_submission_time`)) %>%
+  
+  # Har bir sana bo'yicha qatorlar sonini (ya'ni so'rovnomalar sonini) sanaymiz
+  count(topshirilgan_sana, name = "sorovnomalar_soni") %>%
+  
+  # Natijani sana bo'yicha tartiblaymiz
+  arrange(topshirilgan_sana)
+
+# 2-qadam: Grafikni chizamiz
+ggplot(daily_submissions, aes(x = topshirilgan_sana, y = sorovnomalar_soni)) +
+  
+  # Ustunli diagramma (bar chart). `geom_col` oldindan hisoblangan qiymatlar uchun ishlatiladi.
+  geom_col(fill = "#659965", width = 0.7) +
+  
+  # Har bir ustunning ustiga aniq sonini yozib qo'yish (ixtiyoriy)
+  geom_text(
+    aes(label = sorovnomalar_soni),
+    vjust = -0.5, # Matnni ustundan biroz yuqoriga chiqarish
+    color = "black",
+    size = 3.5
+  ) +
+  
+  # Trendni yaxshiroq ko'rsatish uchun chiziq va nuqtalarni qo'shamiz (ixtiyoriy)
+  geom_line(color = "#E67E22", linewidth = 1) +
+  geom_point(color = "#E67E22", size = 2) +
+  
+  # Sana o'qini (x-axis) chiroyli formatlaymiz
+  # Agar sanalar ko'p bo'lsa, `date_breaks = "2 days"` yoki `"1 week"` qilib o'zgartirishingiz mumkin
+  scale_x_date(date_breaks = "1 day", date_labels = "%b %d") +
+  
+  # Sarlavhalar
+  labs(
+    title = "Kunlik Topshirilgan So'rovnomalar Dinamikasi",
+    x = "Sana",
+    y = "Topshirilgan so'rovnomalar soni"
+  ) +
+  
+  # Orqa fon va umumiy ko'rinish
+  theme_minimal(base_size = 14) +
+  
+  # Agar sana yozuvlari bir-biriga kirishib ketsa, ularni 45 darajaga qiyalashtiramiz
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+  
+
+# --- BU YERNI O'ZGARTIRING ---
+# "viloyat" o'rniga o'zingizga kerakli ustun nomini yozing.
+# Masalan: A2_Jinsi, B5_Savol va hokazo.
+
+
+clean_kobo %>%
+  count(`all/group_pl57r45/A1`, sort = TRUE, name = "so'rovnomalar soni soni") %>%
+  gt() %>%
+  tab_header(
+    title = "hududlar kesimida soni"
+  ) %>%
+  cols_align(align = "center")
+
+clean_kobo %>%
+  filter(!is.na(`all/group_pl57r45/A1`)) %>% # NA qiymatlarni filtrlaymiz
+  ggplot(aes(y = fct_rev(fct_infreq(`all/group_pl57r45/A1`)))) +
+  geom_bar(fill = "#659961") + # Ustunlarni chizamiz va legenda (ranglar izohi)ni yashiramiz
+  
+  # Har bir ustunning ustiga uning qiymatini (sonini) yozamiz
+  geom_text(
+    stat = 'count', 
+    aes(label = after_stat(count)), 
+    hjust = -0.2, # Matnni ustundan biroz o'ngga surish
+    size = 2.5
+  ) +
+  
+  # Grafik sarlavhalari va o'q nomlarini kiritamiz
+  labs(
+    x = "Uy xo'jaliklari soni",
+    y = "Hududlar"
+  ) +
+  
+  # Orqa fonni va umumiy ko'rinishni chiroyli qilamiz
+  theme_minimal(base_size = 14) 
+
+library(lubridate)
+
+household_with_duration <- clean_kobo %>%
+  # 1. Matn formatidagi vaqtni R tushunadigan sana-vaqt formatiga o'tkazamiz
+  mutate(
+    start_time = ymd_hms(start), # ymd_hms -> Year-Month-Day Hour-Minute-Second
+    end_time = ymd_hms(end)
+  ) %>%
+  
+  # 2. Boshlanish va tugash vaqtlari orasidagi farqni daqiqalarda hisoblaymiz
+  mutate(
+    duration_minutes = as.numeric(difftime(end_time, start_time, units = "mins"))
+  ) %>%
+  
+  # 3. Ma'lumotlarni tozalash: Mantiqqa zid qiymatlarni (masalan, 1 daqiqadan kam 
+  # yoki 3 soatdan (180 daqiqa) ko'p) olib tashlash tahlil sifatini oshiradi.
+  filter(duration_minutes >= 1 & duration_minutes <= 180)
+
+
+household_with_duration %>%
+  summarise(
+    `Ўртача давомийлик (дақиқа)` = mean(duration_minutes, na.rm = TRUE),
+    `Медиана давомийлик (дақиқа)` = median(duration_minutes, na.rm = TRUE),
+    `Минимал вақт (дақиқа)` = min(duration_minutes, na.rm = TRUE),
+    `Максимал вақт (дақиқа)` = max(duration_minutes, na.rm = TRUE)
+  ) %>%
+  gt() %>%
+  fmt_number(columns = everything(), decimals = 1) %>%
+  tab_header(title = "So'rovnomaga sarflangan vaqtning umumiy ko'rsatkichlari")
+
+
+household_with_duration %>%
+  # Eng tez bajarilgan 5 ta so'rovnomani tanlab olamiz
+  slice_min(order_by = duration_minutes, n = 10) %>%
+  # Kerakli ustunlarni chiroyli nomlar bi lan tanlab olamiz
+  select(
+    `ID` = `_id`,
+    `Interviewer raqami` = Intervyuver_kod,
+    `Давомийлиги (дақиқа)` = duration_minutes,
+    `UX azolari soni` = `all/group_pl57r45/A1`,
+    `So'rovnomada qatnashishga rozimi` = N1
+  ) %>%
+  gt() %>%
+  tab_header(title = "Eng tez bajarilgan so'rovnomalar")
+
+household_with_duration %>%
+  # Eng tez bajarilgan 5 ta so'rovnomani tanlab olamiz
+  slice_max(order_by = duration_minutes, n = 10) %>%
+  # Kerakli ustunlarni chiroyli nomlar bi lan tanlab olamiz
+  select(
+    `ID` = `_id`,
+    `Interviewer raqami` = Intervyuver_kod,
+    `Давомийлиги (дақиқа)` = duration_minutes,
+    `UX azolari soni` = `all/group_pl57r45/A1`,
+    `So'rovnomada qatnashishga rozimi` = N1
+  ) %>%
+  gt() %>%
+  tab_header(title = "Eng uzoq bajarilgan so'rovnomalar")
+
+
+```
+
+You can add options to executable code like this
+
+```         
+```
+
+The `echo: false` option disables the printing of code (only output is displayed).
