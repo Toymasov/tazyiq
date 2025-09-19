@@ -1,25 +1,29 @@
 # Fayl nomi: .github/workflows/render-report.yml
 
-name: Render Quarto Report
+name: Render and Deploy Quarto Report
 
 on:
-  # Har 10 daqiqada ishga tushirish uchun
   schedule:
     - cron: '*/10 * * * *'
-  # Qo'lda ishga tushirish imkoniyatini qo'shish
   workflow_dispatch:
 
+# Ish jarayoniga GitHub Pages'ga yozish uchun ruxsat berish
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 jobs:
-  render-and-commit:
+  render-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Fayllarni ko'chirib olish
+      - name: Fayllarni ko'chirib olish (Checkout)
         uses: actions/checkout@v4
 
       - name: Quarto va R'ni sozlash
         uses: r-lib/actions/setup-r@v2
         with:
-          r-version: '4.3' # O'zingizga mos R versiyasini kiriting
+          r-version: '4.3'
       - uses: quarto-dev/quarto-actions/setup@v2
 
       - name: R paketlarini o'rnatish
@@ -27,17 +31,18 @@ jobs:
           install.packages(c('httr', 'jsonlite', 'dplyr', 'ggplot2', 'DT', 'lubridate', 'leaflet', 'tidyr', 'gt'))
         shell: Rscript {0}
 
-      - name: Hisobotni render qilish (qayta yaratish)
+      - name: Hisobotni render qilish (HTML yaratish)
         run: |
           quarto render analyse_daily.qmd --to html
         shell: bash
-        # YUQORIDAGI QATORDA "analyse_daily.qmd" O'RNIGA O'Z FAYLINGIZ NOMINI YOZING
+        # YUQORIDAGI QATORDA "HISOBOT_FAYLINGIZ.qmd" O'RNIGA O'Z FAYLINGIZ NOMINI YOZING
 
-      - name: O'zgarishlarni GitHub'ga yuklash
-        run: |
-          git config --local user.email "actions@github.com"
-          git config --local user.name "GitHub Actions"
-          git add --all
-          # Agar o'zgarish bo'lsa, commit qiladi
-          git commit -m "Hisobot avtomatik yangilandi" || echo "O'zgarishlar yo'q"
-          git push || echo "Yangi o'zgarishlar yo'q"
+      - name: Natijani GitHub Pages uchun tayyorlash (Upload Artifact)
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # Yaratilgan fayllarni saqlash
+          path: '.' # Agar .qmd faylingiz asosiy papkada bo'lsa, nuqta qoladi
+          
+      - name: Veb-sahifani nashr qilish (Deploy to Pages)
+        id: deployment
+        uses: actions/deploy-pages@v4
