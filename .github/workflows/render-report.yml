@@ -25,16 +25,16 @@ jobs:
           r-version: '4.3'
       - uses: quarto-dev/quarto-actions/setup@v2
 
-      # --- MUHIM QO'SHIMCHA QADAM ---
-      - name: Geospatial tizim kutubxonalarini o'rnatish
+      # --- YANGILANGAN QADAM ---
+      - name: Tizim kutubxonalarini o'rnatish
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgdal-dev libproj-dev libgeos-dev
+          sudo apt-get install -y libgdal-dev libproj-dev libgeos-dev libudunits2-dev
       # ---------------------------
 
       - name: R paketlarini o'rnatish
         run: |
-          install.packages(c('httr', 'jsonlite', 'dplyr', 'ggplot2', 'DT', 'lubridate', 'leaflet', 'tidyr', 'gt', 'terra'))
+          install.packages(c('httr', 'jsonlite', 'dplyr', 'ggplot2', 'DT', 'lubridate', 'leaflet', 'tidyr', 'gt', 'terra', 'units'))
         shell: Rscript {0}
 
       - name: Hisobotni render qilish (HTML yaratish)
