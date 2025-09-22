@@ -2,6 +2,7 @@
 title: "Oilada tazyiq va zo'ravonlik"
 format: 
   html:
+    output-file: "index.html" 
     toc: true
     toc-location: left
     code-fold: true
