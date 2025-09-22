@@ -32,7 +32,7 @@ library(lubridate)
 library(leaflet)
 library(tidyr)
 library(gt)
-
+library(forcats)
 
 # --- Shaxsiy ma'lumotlaringizni kiriting ---
 kobo_server_url <- "https://kf.kobotoolbox.org"
