@@ -7,7 +7,6 @@ on:
     - cron: '*/10 * * * *'
   workflow_dispatch:
 
-# Ish jarayoniga GitHub Pages'ga yozish uchun ruxsat berish
 permissions:
   contents: read
   pages: write
@@ -26,34 +25,28 @@ jobs:
           r-version: '4.3'
       - uses: quarto-dev/quarto-actions/setup@v2
 
+      # --- MUHIM QO'SHIMCHA QADAM ---
+      - name: Geospatial tizim kutubxonalarini o'rnatish
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgdal-dev libproj-dev libgeos-dev
+      # ---------------------------
+
       - name: R paketlarini o'rnatish
         run: |
-          install.packages(c('httr', 'jsonlite', 'dplyr', 'ggplot2', 'DT', 'lubridate', 'leaflet', 'tidyr', 'gt'))
+          install.packages(c('httr', 'jsonlite', 'dplyr', 'ggplot2', 'DT', 'lubridate', 'leaflet', 'tidyr', 'gt', 'terra'))
         shell: Rscript {0}
 
       - name: Hisobotni render qilish (HTML yaratish)
         run: |
           quarto render index.qmd --to html
         shell: bash
-        # YUQORIDAGI QATORDA "HISOBOT_FAYLINGIZ.qmd" O'RNIGA O'Z FAYLINGIZ NOMINI YOZING
 
       - name: Natijani GitHub Pages uchun tayyorlash (Upload Artifact)
         uses: actions/upload-pages-artifact@v3
         with:
-          # Yaratilgan fayllarni saqlash
-          path: '.' # Agar .qmd faylingiz asosiy papkada bo'lsa, nuqta qoladi
+          path: '.'
           
       - name: Veb-sahifani nashr qilish (Deploy to Pages)
         id: deployment
         uses: actions/deploy-pages@v4
-
-      # ADD THIS NEW STEP HERE
-      - name: Install Geospatial System Libraries
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libgdal-dev libproj-dev libgeos-dev
-    
-      - name: R paketlarini o'rnatish
-        run: |
-          install.packages(c('httr', 'jsonlite', 'dplyr', 'ggplot2', 'DT', 'lubridate', 'leaflet', 'tidyr', 'gt', 'terra'))
-        shell: Rscript {0}
