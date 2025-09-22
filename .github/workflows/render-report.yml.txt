@@ -33,7 +33,7 @@ jobs:
 
       - name: Hisobotni render qilish (HTML yaratish)
         run: |
-          quarto render analyse_daily.qmd --to html
+          quarto render index.qmd --to html
         shell: bash
         # YUQORIDAGI QATORDA "HISOBOT_FAYLINGIZ.qmd" O'RNIGA O'Z FAYLINGIZ NOMINI YOZING
 
