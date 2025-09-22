@@ -16,11 +16,11 @@ execute:
 ---
 
 ```{r}
-
+#install.packages("terra", type = "source")
 #install.packages("lubridate")
 #install.packages("leaflat")
 #install.packages("gt")
-
+library(terra)
 library(httr)
 library(jsonlite)
 library(dplyr)
