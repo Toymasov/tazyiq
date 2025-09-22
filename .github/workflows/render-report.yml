@@ -46,3 +46,14 @@ jobs:
       - name: Veb-sahifani nashr qilish (Deploy to Pages)
         id: deployment
         uses: actions/deploy-pages@v4
+
+      # ADD THIS NEW STEP HERE
+      - name: Install Geospatial System Libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgdal-dev libproj-dev libgeos-dev
+    
+      - name: R paketlarini o'rnatish
+        run: |
+          install.packages(c('httr', 'jsonlite', 'dplyr', 'ggplot2', 'DT', 'lubridate', 'leaflet', 'tidyr', 'gt', 'terra'))
+        shell: Rscript {0}
